@@ -1,0 +1,143 @@
+---
+title: "ttest_1004"
+author: "심현구"
+date: "2023-10-04"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=F, message=F}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=F, message=F}
+setwd("C:/Users/mrg07/Desktop")
+library(tidyverse)
+library(forecast)
+library(lmtest)
+library(moments)
+```
+
+```{r}
+df <- read.csv("dataset0928찐최종.csv", header = T)
+```
+
+# 특약 가입 여부에 따라 사고율에 차이가 있는지 통계적으로 검정
+
+## 마일리지할인율_가입여부에 따른 사고율 평균 차이
+```{r}
+df0 <- df %>% 
+  filter(마일리지할인율_가입여부 == 0) %>% 
+  select(사고율)
+
+df1 <- df %>% 
+  filter(마일리지할인율_가입여부 == 1) %>% 
+  select(사고율)
+
+df1 <- data.frame(df1[sample(nrow(df1), 59288), ])     # t test를 위해 관측치 개수 맞춰주기
+```
+
+
+```{r}
+df_mile <- data.frame(cbind(df0, df1))
+
+t.test(df_mile)
+```
+
+마일리지할인율_가입여부에 따라 사고율에 통계적으로 유의한 차이가 있음!
+
+
+### 영상기록장치특약요율 가입여부에 따른 사고율 평균 차이
+```{r}
+df3 <- df %>% 
+  filter(영상기록장치특약요율 == 0) %>% 
+  select(사고율)
+
+df4 <- df %>% 
+  filter(영상기록장치특약요율 == 1) %>% 
+  select(사고율)
+
+df4 <- data.frame(df4[sample(nrow(df4), 75822), ])     # 관측치 개수 맞춰주기
+```
+
+```{r}
+df_bbox <- data.frame(cbind(df3, df4))
+
+t.test(df_bbox)
+```
+
+블박특약 가입여부에 따라 사고율에 통계적으로 유의한 차이가 있음!
+
+### 따라서 특약 미가입자가 실제로 가입했을 때를 가정하여 예측했을 때 가입 전과 후의 사고율에 유의한 차이가 있는지, 특히 가입 후가 유의하게 작은지 (단측검정) 검정
+
+
+#### 1. 블랙박스 특약 가입 전후 비교 (paired t-test)
+
+```{r}
+df_bbox <- read.csv("블박특약전후_1008.csv", header = T)
+df_mile <- read.csv("마일리지특약전후_1008.csv", header = T)
+df_both <- read.csv("both특약전후_1008.csv", header = T)
+```
+
+```{r}
+df_bbox <- df_bbox %>% 
+  select("before", "after")
+
+print(head(df_bbox))
+```
+```{r}
+# 차이 정규성 검정
+df_bbox <- df_bbox %>% 
+  mutate(df_bbox[,2] - df_bbox[,1])
+
+print(skewness(df_bbox[,3]+10))
+print(kurtosis(df_bbox[,3]+10))
+```
+ㅋㅋ 어차피 대표본 t test니까 정규성 안 봐도 돼~
+
+
+```{r}
+t.test(df_bbox[,1], df_bbox[,2], paired = T, alternative = "greater")
+```
+```{r}
+# 혹시 몰라 비모수도 but 실패
+wilcox.test(df_bbox[,1], df_bbox[,2], paired = T, alternative = "greater", exact = F)
+```
+
+
+
+
+
+#### 2. 마일리지 특약 가입 전후 비교 (paired t-test)
+
+```{r}
+df_mile <- df_mile %>% 
+  select("before", "after")
+
+print(head(df_mile))
+```
+
+```{r}
+t.test(df_mile[,1], df_mile[,2], paired = T, alternative = "greater")
+```
+
+p-value < 0.1로 집단 간 유의한 차이 존재!
+
+```{r}
+# 혹시 몰라 비모수도
+wilcox.test(df_mile[,1], df_mile[,2], paired = T, alternative = "greater", exact = F)
+```
+
+#### 2. 둘다 미가입자 가입 전후 비교 (paired t-test)
+```{r}
+df_both <- df_both %>% 
+  select("before", "after")
+
+print(head(df_both))
+```
+
+```{r}
+t.test(df_both[,1], df_both[,2], paired = T, alternative = "greater")
+
+```
+
+
